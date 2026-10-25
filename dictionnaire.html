@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#D81B60">
+<title>Dictionnaire du patinage</title>
+<style>
+  :root{--fuchsia:#D81B60;--info:#2563EB;--bg:#FFFFFF;--text:#000000;--card:#FFFFFF;--border:#DDDDDD}
+  [data-theme="dark"]{--bg:#121212;--text:#FFFFFF;--card:#1E1E1E;--border:#333333}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.4}
+  header{padding:18px 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:680px;margin:0 auto}
+  h1{color:var(--fuchsia);font-size:1.6rem;margin:0;line-height:1.1}
+  .sub{opacity:.75;font-size:.85rem;margin-top:4px}
+  #theme{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:999px;padding:8px 12px;font-size:.85rem;cursor:pointer;white-space:nowrap}
+  main{padding:0 16px 40px;max-width:680px;margin:0 auto}
+  input[type=search]{width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:1rem;margin:8px 0 4px}
+  .card{background:var(--card);border:1px solid var(--border);border-left:6px solid var(--info);border-radius:12px;padding:11px 14px;margin:8px 0}
+  .term{font-weight:800;font-size:1.02rem}
+  .abbr{color:var(--fuchsia);font-weight:700;font-size:.85rem}
+  .def{font-size:.9rem;margin-top:4px}
+  .muted{opacity:.75;font-size:.82rem;margin-top:12px}
+  .none{opacity:.7;text-align:center;padding:20px 0}
+  .note{font-size:.75rem;opacity:.75;margin-top:24px;line-height:1.45}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Dictionnaire du patinage</h1>
+    <div class="sub">Les mots qu'on entend sur les feuilles et aux compétitions</div>
+  </div>
+  <button id="theme" type="button">Mode sombre</button>
+</header>
+
+<main>
+  <input type="search" id="q" placeholder="Chercher un mot (ex. GOE, pirouette, TES)">
+  <div id="list"></div>
+  <p class="note">
+    Définitions générales. Les règles exactes (seuils, éléments exigés) sont dans les règlements ARP et SIS de la saison 2026-2027.
+  </p>
+</main>
+
+<script>
+const TERMS = [
+  {t:"Base (Base Value)", a:"", d:"Valeur de l'élément avant notation. Un saut double vaut plus qu'un simple."},
+  {t:"Calendrier des compétitions", a:"", d:"Liste des compétitions de la saison, avec leurs dates et leurs catégories."},
+  {t:"Catégorie", a:"", d:"Groupe d'âge et de niveau dans lequel un enfant patine. Elle dépend de la date de naissance et du test réussi."},
+  {t:"Choreographic sequence (ChSq)", a:"ChSq", d:"Séquence chorégraphique : enchaînement de pas et de glisses en lien avec la musique. Sa valeur est fixe, seul le GOE la fait varier."},
+  {t:"Combinaison de sauts", a:"+", d:"Deux sauts enchaînés sans pas entre les deux. Par exemple 1S+1T."},
+  {t:"Composantes (Program Components)", a:"", d:"Notes de la manière de patiner : composition, présentation et qualité du patinage. Elles ne concernent pas un élément précis."},
+  {t:"Composition", a:"", d:"Composante qui juge l'organisation du programme sur la glace et les liens entre les éléments."},
+  {t:"Facteur", a:"", d:"Coefficient multiplicateur appliqué aux composantes selon la catégorie (par exemple 1,0 ou 1,1)."},
+  {t:"Feuille de juge", a:"", d:"Feuille officielle détaillant, pour chaque patineur, les éléments, les GOE de chaque juge et les composantes."},
+  {t:"GOE (Grade of Execution)", a:"GOE", d:"Note d'exécution d'un élément, entre -5 et +5. Positive si l'élément est bien exécuté, négative s'il y a des défauts."},
+  {t:"Juge", a:"", d:"Personne qui note les éléments et les composantes. Le panel en compte plusieurs (3, 5 ou 9 selon la compétition)."},
+  {t:"Liste des éléments exécutés", a:"", d:"Les sauts, pirouettes et séquences présentés par le patineur, dans l'ordre du programme."},
+  {t:"Pirouette (spin)", a:"USp, CoSp, SSp", d:"Rotation sur la glace. Debout (USp), assise (SSp) ou combinée avec changement de pied (CoSp)."},
+  {t:"Programme court / programme libre", a:"", d:"Le programme court est plus court. Le programme libre est le programme principal."},
+  {t:"Saut simple, double, triple", a:"1, 2, 3", d:"Le chiffre indique le nombre de tours. 1S = simple salchow, 2A = double axel."},
+  {t:"Séquence de pas (StSq)", a:"StSq", d:"Enchaînement de pas sur la glace avec des virages et des rotations. Le niveau va de basic à 4."},
+  {t:"Suffixe", a:"<, <<, e, q, !", d:"Lettre ou signe placé après un saut pour signaler un défaut. < : sous-rotation. << : downgrade, compté comme un tour de moins. e : mauvaise arête. q : réception sur le quart."},
+  {t:"Swiss Cup", a:"", d:"Compétition suisse de haut niveau où des tests peuvent être validés."},
+  {t:"TES (Total Element Score)", a:"TES", d:"Total des scores des éléments : somme des bases et des GOE de tous les éléments du programme."},
+  {t:"Test", a:"", d:"Épreuve qui valide un niveau. Pour réussir un test, il faut des éléments exigés, un TES minimal et un total minimal de composantes."},
+  {t:"Test ARP", a:"ARP", d:"Test de l'Association romande de patinage. Il se valide en compétition, du 7e au 1er niveau, et doit être réussi dans l'ordre."},
+  {t:"Test SIS", a:"SIS", d:"Test de Swiss Ice Skating, au niveau suisse. Il n'est pas encore dans cette application."},
+  {t:"Total des composantes", a:"", d:"Somme des trois composantes (composition, présentation, qualité du patinage). Certains tests exigent un minimum."},
+  {t:"Triple, quadruple", a:"3, 4", d:"Sauts à trois ou quatre tours. Les enfants de cette application ne les présentent pas encore."},
+  {t:"Upright spin (USp)", a:"USpA", d:"Pirouette debout sur un pied. La lettre indique le niveau de difficulté."}
+];
+function norm(s){return s.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();}
+function render(){
+  const q = norm(document.getElementById("q").value.trim());
+  const items = TERMS.filter(x => !q || norm(x.t + " " + x.a + " " + x.d).includes(q));
+  document.getElementById("list").innerHTML = items.length ? items.map(x => `
+    <div class="card">
+      <div class="term">${x.t}</div>
+      ${x.a ? `<div class="abbr">${x.a}</div>` : ""}
+      <div class="def">${x.d}</div>
+    </div>`).join("") : `<div class="none">Aucun terme trouvé.</div>`;
+}
+document.getElementById("q").addEventListener("input", render);
+function setTheme(t){document.documentElement.setAttribute("data-theme",t);document.body.setAttribute("data-theme",t);document.getElementById("theme").textContent=t==="dark"?"Mode clair":"Mode sombre";}
+document.getElementById("theme").onclick=()=>setTheme(document.body.getAttribute("data-theme")==="dark"?"light":"dark");
+setTheme(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
+TERMS.sort((a,b)=>a.t.localeCompare(b.t,"fr"));
+render();
+</script>
+</body>
+</html>

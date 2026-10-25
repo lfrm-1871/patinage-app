@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#D81B60">
+<title>Calendrier patinage</title>
+<style>
+  :root{
+    --fuchsia:#D81B60;
+    --arp:#2563EB;
+    --sis:#00897B;
+    --champ:#F59E0B;
+    --bg:#FFFFFF;
+    --text:#000000;
+    --card:#FFFFFF;
+    --border:#DDDDDD;
+  }
+  [data-theme="dark"]{
+    --bg:#121212;
+    --text:#FFFFFF;
+    --card:#1E1E1E;
+    --border:#333333;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  header{padding:18px 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:640px;margin:0 auto}
+  h1{color:var(--fuchsia);font-size:1.7rem;margin:0;line-height:1.1}
+  .sub{opacity:.75;font-size:.85rem;margin-top:4px}
+  #theme{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:999px;padding:8px 12px;font-size:.85rem;cursor:pointer;white-space:nowrap}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.8rem;margin:6px auto 0;padding:0 16px;max-width:640px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{width:10px;height:10px;border-radius:3px;background:var(--c);display:inline-block}
+  main{padding:0 16px 40px;max-width:640px;margin:0 auto}
+  h2{font-size:1rem;margin:22px 0 0;text-transform:capitalize;color:var(--text)}
+  .card{background:var(--card);border:1px solid var(--border);border-left:6px solid var(--c);border-radius:14px;padding:13px 14px;margin:12px 0}
+  .date{font-size:.8rem;font-weight:700;opacity:.8}
+  .name{font-size:1.05rem;font-weight:700;margin:4px 0 2px}
+  .place{font-size:.9rem;opacity:.8}
+  .tests{font-size:.82rem;margin-top:6px}
+  .tag{display:inline-block;margin-top:8px;font-size:.75rem;font-weight:700;color:var(--c);border:1px solid var(--c);border-radius:999px;padding:3px 9px}
+  .add{margin-top:10px;display:block;width:100%;border:none;background:var(--c);color:#000;font-weight:700;border-radius:10px;padding:10px;font-size:.85rem;cursor:pointer}
+  .note{font-size:.75rem;opacity:.75;margin-top:24px;line-height:1.45}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Calendrier patinage</h1>
+    <div class="sub">Compétitions romandes · saison 2026-2027</div>
+  </div>
+  <button id="theme" type="button">Mode sombre</button>
+</header>
+
+<div class="legend">
+  <span style="--c:var(--arp)"><i></i>Tests ARP</span>
+  <span style="--c:var(--sis)"><i></i>Tests SIS</span>
+  <span style="--c:var(--champ)"><i></i>Championnat</span>
+</div>
+
+<main id="list"></main>
+
+<p class="note">
+  Source : Programme 2026-2027 de l'Association romande de patinage, version du 17 juillet 2026.
+  Dates et lieux à confirmer auprès de l'organisateur. Les Swiss Cup hors de Romandie, les championnats suisses et les entraînements du ballet ne sont pas inclus.
+</p>
+</main>
+
+<script>
+// type : "arp" (tests ARP), "sis" (tests SIS), "champ" (championnat romand, vaudois, genevois…)
+const EVENTS = [
+  {start:"2026-10-24", end:"2026-10-25", name:"Coupe d'Erguël", place:"Saint-Imier", type:"arp", tests:"ARP 7 à 2 · SIS 4 à 1"},
+  {start:"2026-11-14", end:"2026-11-15", name:"Coupe des Franches-Montagnes", place:"Saignelégier", type:"arp", tests:"ARP 7 à 3"},
+  {start:"2026-12-05", end:"2026-12-06", name:"Coupe de Tramelan", place:"Tramelan", type:"arp", tests:"ARP 7 à 3"},
+  {start:"2026-12-11", end:"2026-12-13", name:"Coupe d'Ajoie", place:"Porrentruy", type:"arp", tests:"ARP 7 à 2 · SIS 4 à 1"},
+  {start:"2027-01-08", end:"2027-01-10", name:"Open ARP + 61e Championnat romand", place:"Trois-Chêne (à confirmer)", type:"champ", tests:"ARP 6 à 1 · SIS 4 à 1"},
+  {start:"2027-01-15", end:"2027-01-17", name:"Coupe Neuchâteloise", place:"Neuchâtel", type:"arp", tests:"ARP 7 à 2"},
+  {start:"2027-01-23", end:"2027-01-24", name:"Coupe Prévôtoise", place:"Moutier", type:"arp", tests:"ARP 7 à 3"},
+  {start:"2027-02-05", end:"2027-02-07", name:"Trophée romand + finale Mixed Age", place:"Yverdon", type:"sis", tests:"ARP 4 à 1 · SIS 4 à 1"},
+  {start:"2027-02-20", end:"2027-02-21", name:"Trophée des étoiles", place:"Saint-Imier", type:"arp", tests:"ARP 7 à 5"},
+  {start:"2027-02-27", end:"2027-02-28", name:"Coupe 13 étoiles", place:"Monthey", type:"arp", tests:"ARP 7 à 3"},
+  {start:"2027-03-06", end:"2027-03-07", name:"Coupe Fleurisanne et championnats neuchâtelois", place:"Fleurier", type:"arp", tests:"ARP 7 à 5 (3)"},
+  {start:"2027-03-06", end:"2027-03-07", name:"Ice-Trophy", place:"Bienne", type:"arp", tests:"ARP 7 à 3"},
+  {start:"2027-03-07", end:"2027-03-07", name:"Championnat genevois", place:"Genève (à confirmer)", type:"champ", tests:"ARP 7 à 5"},
+  {start:"2027-03-20", end:"2027-03-21", name:"Championnat vaudois", place:"Villars", type:"champ", tests:"ARP 7 à 5 (2) · SIS 4 à 1"},
+  {start:"2027-04-17", end:"2027-04-18", name:"Zaehringer Cup", place:"Fribourg", type:"arp", tests:"ARP 7 à 2"},
+  {start:"2026-11-27", end:"2026-11-29", name:"Coupe de Lausanne", place:"Lausanne", type:"arp", tests:"ARP 7 à 3"}
+];
+
+const TYPES = {
+  arp:   {label:"Tests ARP",   color:"var(--arp)"},
+  sis:   {label:"Tests SIS",   color:"var(--sis)"},
+  champ: {label:"Championnat", color:"var(--champ)"}
+};
+
+const $ = s => document.querySelector(s);
+const parse = iso => { const [y,m,d]=iso.split("-").map(Number); return new Date(y,m-1,d); };
+const fmtRange = (a,b) => {
+  const o={day:"numeric",month:"short",year:"numeric"};
+  return a===b ? parse(a).toLocaleDateString("fr-CH",o)
+               : `${parse(a).toLocaleDateString("fr-CH",{day:"numeric",month:"short"})} – ${parse(b).toLocaleDateString("fr-CH",o)}`;
+};
+
+function downloadIcs(e){
+  const ymd = iso => iso.replaceAll("-","");
+  const next = new Date(parse(e.end).getTime()+86400000);
+  const endYmd = `${next.getFullYear()}${String(next.getMonth()+1).padStart(2,"0")}${String(next.getDate()).padStart(2,"0")}`;
+  const ics = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Calendrier patinage//FR","BEGIN:VEVENT",
+    `UID:${ymd(e.start)}-${e.name.replace(/\W+/g,"")}@patinage`,
+    `DTSTART;VALUE=DATE:${ymd(e.start)}`,
+    `DTEND;VALUE=DATE:${endYmd}`,
+    `SUMMARY:${e.name}`,
+    `LOCATION:${e.place}`,
+    `DESCRIPTION:${TYPES[e.type].label} - ${e.tests}`,
+    "END:VEVENT","END:VCALENDAR"].join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([ics],{type:"text/calendar"}));
+  a.download = `${e.name.replace(/\W+/g,"_")}.ics`;
+  a.click();
+}
+
+function render(){
+  const list = $("#list");
+  let html = "", lastMonth = "";
+  [...EVENTS].sort((a,b)=>a.start.localeCompare(b.start)).forEach(e=>{
+    const m = parse(e.start).toLocaleDateString("fr-CH",{month:"long",year:"numeric"});
+    if(m!==lastMonth){ html += `<h2>${m}</h2>`; lastMonth=m; }
+    const t = TYPES[e.type];
+    html += `<article class="card" style="--c:${t.color}">
+      <div class="date">${fmtRange(e.start,e.end)}</div>
+      <div class="name">${e.name}</div>
+      <div class="place">${e.place}</div>
+      <span class="tag">${t.label}</span>
+      <div class="tests">${e.tests}</div>
+    </article>`;
+  });
+  list.innerHTML = html;
+}
+
+function setTheme(t){
+  document.documentElement.setAttribute("data-theme", t);
+  document.body.setAttribute("data-theme", t);
+  $("#theme").textContent = t==="dark" ? "Mode clair" : "Mode sombre";
+}
+$("#theme").onclick = () => setTheme(document.body.getAttribute("data-theme")==="dark" ? "light" : "dark");
+setTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+render();
+</script>
+</body>
+</html>

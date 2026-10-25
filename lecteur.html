@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#D81B60">
+<title>Lecteur de feuille de juge</title>
+<style>
+  :root{
+    --fuchsia:#D81B60;
+    --info:#2563EB;
+    --ok:#00897B;
+    --warn:#F59E0B;
+    --bg:#FFFFFF;
+    --text:#000000;
+    --card:#FFFFFF;
+    --border:#DDDDDD;
+  }
+  [data-theme="dark"]{
+    --bg:#121212;
+    --text:#FFFFFF;
+    --card:#1E1E1E;
+    --border:#333333;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.4}
+  header{padding:18px 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:680px;margin:0 auto}
+  h1{color:var(--fuchsia);font-size:1.6rem;margin:0;line-height:1.1}
+  .sub{opacity:.75;font-size:.85rem;margin-top:4px}
+  button,select,input,textarea{font:inherit}
+  #theme{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:999px;padding:8px 12px;font-size:.85rem;cursor:pointer;white-space:nowrap}
+  main{padding:0 16px 40px;max-width:680px;margin:0 auto}
+  h2{font-size:1.05rem;margin:24px 0 8px;color:var(--fuchsia)}
+  .card{background:var(--card);border:1px solid var(--border);border-left:6px solid var(--c,var(--info));border-radius:12px;padding:12px 14px;margin:8px 0}
+  .muted{opacity:.75;font-size:.88rem}
+  .btn{border:none;background:var(--fuchsia);color:#FFFFFF;border-radius:10px;padding:10px 14px;font-size:.95rem;cursor:pointer;font-weight:600}
+  .btn.alt{background:var(--card);color:var(--text);border:1px solid var(--border)}
+  .btn:disabled{opacity:.5;cursor:default}
+  textarea{width:100%;min-height:120px;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.85rem}
+  select,input[type=number],input[type=text]{padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)}
+  input[type=number]{width:70px}
+  input[type=text]{width:100px}
+  table{width:100%;border-collapse:collapse;font-size:.88rem}
+  th,td{border-bottom:1px solid var(--border);padding:6px 4px;text-align:left;vertical-align:middle}
+  th{font-weight:700;opacity:.85;font-size:.8rem}
+  .verdict{font-size:1.15rem;font-weight:800}
+  .ok{color:var(--ok)}
+  .ko{color:var(--fuchsia)}
+  .big{font-size:1.5rem;font-weight:800}
+  .flag{color:var(--warn);font-weight:700}
+  .status{font-size:.9rem;margin-top:8px}
+  details{margin-top:6px}
+  summary{cursor:pointer;font-weight:600}
+  .scroll{overflow-x:auto}
+  .note{font-size:.78rem;opacity:.75;margin-top:20px;line-height:1.45}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Lecteur de feuille de juge</h1>
+    <div class="sub">Copier-coller → vérification → explication</div>
+  </div>
+  <button id="theme" type="button">Mode sombre</button>
+</header>
+
+<main>
+
+  <h2>1. Test visé</h2>
+  <div class="card" style="--c:var(--info)">
+    <label class="muted" for="cat">Catégorie de l'enfant</label><br>
+    <select id="cat" style="margin-top:6px"></select>
+    <div id="testInfo" class="muted" style="margin-top:10px"></div>
+  </div>
+
+  <h2>2. Lire la feuille</h2>
+  <div class="card" style="--c:var(--ok)">
+    <strong>Copier-coller</strong>
+    <p class="muted" style="margin:6px 0">Sur le site, sélectionne le tableau du patineur, copie-le et colle-le ci-dessous. C'est le texte exact, sans erreur de lecture.</p>
+    <textarea id="paste" placeholder="Colle ici le texte copié du site"></textarea>
+    <div style="margin-top:8px"><button id="pasteBtn" class="btn" type="button">Lire le texte collé</button></div>
+  </div>
+
+  <h2>3. Vérification</h2>
+  <p class="muted">Compare avec la feuille. Les lignes marquées « à vérifier » ont été lues avec doute. Le calcul se met à jour quand tu modifies une case.</p>
+  <div id="readInfo" class="muted"></div>
+
+  <div class="card" style="--c:var(--info)">
+    <strong>Éléments</strong>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Élément</th><th>Base</th><th>GOE</th><th>J1</th><th>J2</th><th>J3</th><th>Score</th></tr></thead>
+        <tbody id="elRows"></tbody>
+      </table>
+    </div>
+    <div class="muted" style="margin-top:6px">Score = base + GOE imprimé. Le GOE est celui de la feuille officielle, pas la moyenne des trois juges visibles.</div>
+    <div style="margin-top:8px"><button id="addEl" class="btn alt" type="button">+ Ajouter un élément</button></div>
+  </div>
+
+  <div class="card" style="--c:var(--ok)">
+    <strong>Composantes (facteur 1,00)</strong>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Composante</th><th>J1</th><th>J2</th><th>J3</th><th>Panel</th></tr></thead>
+        <tbody id="compRows">
+          <tr data-c="comp"><td>Composition</td><td><input type="number" step="0.01" class="j"></td><td><input type="number" step="0.01" class="j"></td><td><input type="number" step="0.01" class="j"></td><td class="pn">–</td></tr>
+          <tr data-c="pres"><td>Présentation</td><td><input type="number" step="0.01" class="j"></td><td><input type="number" step="0.01" class="j"></td><td><input type="number" step="0.01" class="j"></td><td class="pn">–</td></tr>
+          <tr data-c="skate"><td>Qualité du patinage</td><td><input type="number" step="0.01" class="j"></td><td><input type="number" step="0.01" class="j"></td><td><input type="number" step="0.01" class="j"></td><td class="pn">–</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="muted" style="margin-top:6px">Panel = valeur imprimée, sinon moyenne des juges.</div>
+  </div>
+
+  <h2>4. Résultat</h2>
+  <div id="result"></div>
+
+  <h2>Ce que signifient les mots</h2>
+  <div class="card" style="--c:var(--info)">
+    <p><b>Base</b> : la valeur de l'élément avant notation. Un saut simple vaut moins qu'un saut double.</p>
+    <p><b>GOE</b> : la note d'exécution, entre -5 et +5. Positif = bien exécuté, négatif = défauts.</p>
+    <p><b>Score d'élément</b> : base + GOE. La somme de tous les éléments s'appelle le <b>TES</b>.</p>
+    <p><b>Composantes</b> : composition, présentation et qualité du patinage. Elles jugent la manière de patiner.</p>
+    <p><b>Test ARP</b> : un niveau validé. Il faut réussir les éléments exigés, un TES minimal et un total minimal de composantes.</p>
+  </div>
+
+  <p class="note">
+    Seuils : règlement des tests en compétition ARP 2026-2027, version du 12 septembre 2026, tableau p. 5. Les tests SIS ne sont pas encore intégrés (règlement SIS à fournir).
+    La règle « majorité des juges » pour les composantes est vérifiée ici par juge. La page ne remplace pas la feuille officielle ni le contrôle du technical controller.
+  </p>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+
+const single = ok => ok.some(x => x.parts.length === 1 && /^1(T|S|Lo|F|Lz|A|W)$/.test(x.parts[0]));
+const comboSingles = ok => ok.some(x => x.parts.length === 2 && x.parts.every(p => /^1(T|S|Lo|F|Lz|A|W)$/.test(p)));
+const lutzOrFlipCombo = ok => ok.some(x => x.parts.length === 2 && x.parts.every(p => /^1(T|S|Lo|F|Lz|A|W)$/.test(p)) && x.parts.some(p => p === "1Lz" || p === "1F"));
+const spin = ok => ok.some(x => x.kind === "spin");
+const lo1 = ok => ok.some(x => x.parts.length === 1 && ["1Lo", "1F", "1Lz"].includes(x.parts[0]));
+const axel = ok => ok.some(x => x.parts.length === 1 && x.parts[0] === "1A");
+const dbl = ok => ok.some(x => x.parts.length === 1 && /^2(T|S|Lo|F|Lz|A)$/.test(x.parts[0]));
+const comboDoubleSecond = ok => ok.some(x => x.parts.length === 2 && /^2/.test(x.parts[1]));
+const twoDoublesCombo = ok => ok.some(x => x.parts.length === 2 && x.parts.every(p => /^2(T|S|Lo|F|Lz|A)$/.test(p)));
+const lz2 = ok => ok.some(x => x.parts.length === 1 && x.parts[0] === "2Lz");
+const a2 = ok => ok.some(x => x.parts.length === 1 && x.parts[0] === "2A");
+
+const R_SINGLE = { label: "1 saut simple", test: single };
+const R_COMBO2 = { label: "1 combinaison de 2 sauts simples", test: comboSingles };
+const R_SPIN = { label: "1 pirouette", test: spin };
+const R_LO1 = { label: "1Lo ou 1F ou 1Lz", test: lo1 };
+const R_LUTZFLIP = { label: "1 combinaison de 2 sauts avec soit Lutz soit Flip", test: lutzOrFlipCombo };
+const R_AXEL = { label: "1A", test: axel };
+const R_DBL = { label: "1 double saut à choix", test: dbl };
+const R_COMBO_DBL2 = { label: "1 combinaison avec 1 double saut en 2e position", test: comboDoubleSecond };
+const R_TWO_DBL = { label: "2 sauts doubles en combinaison ou séquence", test: twoDoublesCombo };
+const R_2LZ = { label: "2Lz en solo", test: lz2 };
+const R_2A = { label: "2A en solo", test: a2 };
+
+const TESTS = [
+  { name: "7e ARP", label: "7e ARP (Acier, programme 2'00)", tes: 4.20, comp: 4.50, reqs: [R_SINGLE, R_COMBO2, R_SPIN] },
+  { name: "6e ARP", label: "6e ARP (Cuivre, Poussin : programme 2'00)", tes: 4.80, comp: 5.25, reqs: [R_LO1, R_COMBO2, R_SPIN] },
+  { name: "6e ARP", label: "6e ARP (programme 2'30)", tes: 6.50, comp: 5.25, reqs: [R_LO1, R_COMBO2, R_SPIN] },
+  { name: "5e ARP", label: "5e ARP (Inter-bronze, Benjamin : programme 2'30 Basic)", tes: 8.30, comp: 6.75, reqs: [R_AXEL, R_LUTZFLIP, R_SPIN] },
+  { name: "5e ARP", label: "5e ARP (programme 2'30 Intermediate Novice)", tes: 8.80, comp: 6.75, reqs: [R_AXEL, R_LUTZFLIP, R_SPIN] },
+  { name: "4e ARP basic", label: "4e ARP basic (programme 2'30 Intermediate Novice)", tes: 12.80, comp: 8.25, reqs: [R_DBL, R_SPIN] },
+  { name: "4e ARP basic", label: "4e ARP basic (programme 3'00 Advanced Novice)", tes: 13.50, comp: 8.25, reqs: [R_DBL, R_SPIN] },
+  { name: "4e ARP advanced", label: "4e ARP advanced (programme 2'30 Intermediate Novice)", tes: 14.70, comp: 9.00, reqs: [R_COMBO_DBL2, R_SPIN] },
+  { name: "4e ARP advanced", label: "4e ARP advanced (programme 3'00 Advanced Novice)", tes: 15.50, comp: 9.00, reqs: [R_COMBO_DBL2, R_SPIN] },
+  { name: "3e ARP", label: "3e ARP (programme 3'00 Advanced Novice)", tes: 18.20, comp: 10.50, reqs: [R_TWO_DBL, R_SPIN] },
+  { name: "3e ARP", label: "3e ARP (programme 3'30 Junior)", tes: 23.50, comp: 10.50, reqs: [R_TWO_DBL, R_SPIN] },
+  { name: "2e ARP", label: "2e ARP (programme 3'00 Advanced Novice)", tes: 20.50, comp: 12.00, reqs: [R_2LZ, R_SPIN] },
+  { name: "2e ARP", label: "2e ARP (programme 3'30 Junior)", tes: 24.70, comp: 12.00, reqs: [R_2LZ, R_SPIN] },
+  { name: "1re ARP", label: "1re ARP (programme 2'20 Advanced Novice)", tes: 18.40, comp: 12.75, reqs: [R_2A, R_SPIN] },
+  { name: "1re ARP", label: "1re ARP (programme 2'40 Junior)", tes: 20.90, comp: 12.75, reqs: [R_2A, R_SPIN] },
+  { name: "1re ARP", label: "1re ARP (programme 2'40 Senior)", tes: 24.40, comp: 12.75, reqs: [R_2A, R_SPIN] }
+];
+let TARGET = TESTS[0];
+const KNOWN = ["1S+1T","1Lo","USpA","ChSqA","1W+1Lo","1S","1W","1T","1S+1Lo<<","1S+1Lo","1Lo+1T","SSp","1F","1Lz","1A","2S","2T","2Lo","CoSp1","FCoSp1"];
+
+// ---------- Thème ----------
+function setTheme(t){
+  document.documentElement.setAttribute("data-theme", t);
+  document.body.setAttribute("data-theme", t);
+  $("#theme").textContent = t === "dark" ? "Mode clair" : "Mode sombre";
+}
+$("#theme").onclick = () => setTheme(document.body.getAttribute("data-theme") === "dark" ? "light" : "dark");
+setTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+
+const fmt = v => (v === null || v === undefined || isNaN(v)) ? "–" : v.toFixed(2).replace(".", ",");
+const round2 = v => Math.round(v * 100) / 100;
+
+// ---------- Lecture du texte ----------
+function lev(a, b) {
+  const m = a.length, n = b.length;
+  const d = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+  for (let j = 0; j <= n; j++) d[0][j] = j;
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+  return d[m][n];
+}
+function normCode(raw) {
+  const c = raw.replace(/\s+/g, "");
+  let best = c, bestD = 99;
+  KNOWN.forEach(k => {
+    const d = lev(c.toLowerCase(), k.toLowerCase());
+    if (d < bestD) { bestD = d; best = k; }
+  });
+  return bestD <= 2 ? best : c;
+}
+function decTok(t) {
+  if (t === undefined || t === null) return NaN;
+  const s = String(t).replace(/O/g, "0").replace(/o/g, "0").replace(",", ".");
+  if (/^[-+]?\d+\.\d{1,2}$/.test(s)) return Number(s);
+  if (/^[-+]?\d{3}$/.test(s)) return Number(s.replace(/^([-+]?)(\d)(\d\d)$/, "$1$2.$3"));
+  return NaN;
+}
+function intTok(t) {
+  if (t === undefined || t === null || t === "-") return null;
+  const s = String(t).replace(/O/g, "0").replace(/o/g, "0");
+  return /^[-+]?\d$/.test(s) ? Number(s) : undefined;
+}
+
+function parseSheet(text) {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const start = lines.findIndex(l => /Rank/i.test(l));
+  let block = start >= 0 ? lines.slice(start + 1) : lines;
+  const nextRank = block.findIndex((l, i) => i > 0 && /Rank/i.test(l));
+  if (nextRank > 0) block = block.slice(0, nextRank);
+
+  const elements = [], comps = [], warnings = [];
+  block.forEach(line => {
+    const toks = line.split(/\s+/);
+    if (/^\d$/.test(toks[0]) && !/\b[A-Z]{3}\b/.test(line)) {
+      toks.shift();
+      const bIdx = toks.findIndex((t, i) => i > 0 && !isNaN(decTok(t)));
+      if (bIdx > 0) {
+        const codeRaw = toks.slice(0, bIdx).join("");
+        const base = decTok(toks[bIdx]);
+        const goeRaw = decTok(toks[bIdx + 1]);
+        const judges = [toks[bIdx + 2], toks[bIdx + 3], toks[bIdx + 4]].map(intTok);
+        const scoreTok = [...toks].reverse().find(t => !isNaN(decTok(t)) && decTok(t) !== base);
+        const score = scoreTok ? decTok(scoreTok) : NaN;
+        let goe = goeRaw, sure = true;
+        if (!isNaN(base) && !isNaN(score) && !isNaN(goeRaw)) {
+          const a = Math.abs(goeRaw);
+          const plus = Math.abs(base + a - score) < 0.006;
+          const minus = Math.abs(base - a - score) < 0.006;
+          if (plus && !minus) goe = a;
+          else if (minus && !plus) goe = -a;
+          else if (!plus && !minus) sure = false;
+        } else sure = false;
+        const code = normCode(codeRaw);
+        const judgesOk = judges.every(j => j !== undefined);
+        const doubt = !sure || !judgesOk;
+        elements.push({
+          code, base: isNaN(base) ? "" : base, goe: isNaN(goe) ? "" : goe,
+          judges: judges.map(j => (j === undefined || j === null ? "" : j)),
+          doubt
+        });
+      }
+    }
+    const cm = line.match(/^(Composition|Presentation|Skating\s*Skills)/i);
+    if (cm) {
+      const nums = toks.slice(1).map(decTok).filter(v => !isNaN(v));
+      const key = /composition/i.test(cm[1]) ? "comp" : /presentation/i.test(cm[1]) ? "pres" : "skate";
+      if (nums.length >= 4) {
+        comps.push({ key, judges: nums.slice(-4, -1), panel: nums[nums.length - 1] });
+      } else warnings.push(`${cm[1]} : valeurs incomplètes`);
+    }
+  });
+  return { elements, comps, warnings };
+}
+
+// ---------- Lignes du tableau ----------
+function addElRow(e = { code: "", base: "", goe: "", judges: ["", "", ""], doubt: false }) {
+  const tr = document.createElement("tr");
+  const flag = e.doubt ? ` <span class="flag" title="Lecture incertaine">à vérifier</span>` : "";
+  tr.innerHTML = `
+    <td><input type="text" class="c" value="${e.code}" aria-label="Élément">${flag}</td>
+    <td><input type="number" step="0.01" class="b" value="${e.base}" aria-label="Base"></td>
+    <td><input type="number" step="0.01" class="go" value="${e.goe}" aria-label="GOE"></td>
+    <td><input type="number" step="1" class="j" value="${e.judges[0]}" aria-label="J1"></td>
+    <td><input type="number" step="1" class="j" value="${e.judges[1]}" aria-label="J2"></td>
+    <td><input type="number" step="1" class="j" value="${e.judges[2]}" aria-label="J3"></td>
+    <td class="sc">–</td>`;
+  $("#elRows").appendChild(tr);
+  tr.querySelectorAll("input").forEach(i => i.addEventListener("input", recalc));
+  recalc();
+}
+$("#addEl").onclick = () => addElRow();
+
+function readElements() {
+  return $$("#elRows tr").map(tr => {
+    const code = tr.querySelector(".c").value.trim();
+    const base = parseFloat(tr.querySelector(".b").value.replace(",", "."));
+    const goe = parseFloat(tr.querySelector(".go").value.replace(",", "."));
+    const judges = [...tr.querySelectorAll(".j")].map(i => {
+      const v = i.value.trim();
+      return v === "" ? null : Number(v);
+    });
+    const score = isNaN(base) || isNaN(goe) ? NaN : round2(base + goe);
+    tr.querySelector(".sc").textContent = isNaN(score) ? "–" : fmt(score);
+    return { code, base, goe, judges, score };
+  }).filter(e => e.code !== "" || !isNaN(e.base));
+}
+
+const ELEMENT_INFO = {
+  "1S": {nom:"saut simple Salchow", texte:"un tour, décollé et reçu en arrière."},
+  "1T": {nom:"saut simple boucle à la pointe (toe loop)", texte:"un tour, décollé en s'aidant de la pointe de l'autre patin."},
+  "1Lo": {nom:"saut simple Loop", texte:"un tour, décollé et reçu en arrière sur le bord extérieur, sans pointe."},
+  "1F": {nom:"saut simple Flip", texte:"un tour, décollé avec la pointe sur le bord intérieur arrière."},
+  "1Lz": {nom:"saut simple Lutz", texte:"un tour, décollé avec la pointe sur le bord extérieur arrière, en sens inverse de la rotation."},
+  "1A": {nom:"Axel", texte:"un tour et demi, le seul saut qui décolle vers l'avant."},
+  "1W": {nom:"saut de valse (waltz)", texte:"un tour et demi, décollé vers l'avant."},
+  "USpA": {nom:"pirouette debout", texte:"rotation sur un pied, position debout. La lettre indique le niveau : plus il est élevé, plus la valeur est haute."},
+  "SSp": {nom:"pirouette assise (sit spin)", texte:"rotation accroupie sur un pied. La feuille lui donne 0,00 : à vérifier pourquoi."},
+  "ChSqA": {nom:"séquence chorégraphique", texte:"enchaînement de pas et de glisses en lien avec la musique. Sa valeur est fixe : seul le GOE la fait varier."}
+};
+function explainSingle(c) {
+  const base = c.replace(/<+$|e$|!$|q$/, "");
+  const info = ELEMENT_INFO[base] || { nom: "élément non reconnu", texte: "à vérifier sur la feuille officielle." };
+  let extra = "";
+  if (/<</.test(c)) extra = " Suffixe << : sous-rotation d'un tour ou plus, comptée comme le saut à un tour de moins.";
+  else if (/</.test(c)) extra = " Suffixe < : sous-rotation, il manque plus d'un quart de tour.";
+  if (/e$/.test(c)) extra = " Suffixe e : mauvaise arête de départ.";
+  return { nom: info.nom, texte: info.texte + extra };
+}
+function explainCode(code) {
+  const c = code.replace(/\s/g, "");
+  if (c.includes("+")) {
+    const parts = c.split("+");
+    return {
+      nom: "combinaison " + parts.join(" + "),
+      texte: parts.map(p => p + " = " + explainSingle(p).nom).join(" ; ") + ". Le second saut doit suivre directement le premier, sans pas entre les deux."
+    };
+  }
+  return explainSingle(c);
+}
+function goeTxt(g) {
+  if (isNaN(g) || g === "") return "non renseigné";
+  if (g > 0) return "exécution jugée bonne";
+  if (g === 0) return "exécution moyenne";
+  return "défauts relevés";
+}
+function renderExplain(els) {
+  const rows = els.filter(e => e.code).map(e => {
+    const x = explainCode(e.code);
+    const g = e.goe;
+    const gTxt = isNaN(g) ? "–" : (g > 0 ? "+" : "") + fmt(g);
+    return `<li><b>${e.code}</b> : ${x.nom}. ${x.texte} <span class="muted">Base ${fmt(e.base)}, GOE ${gTxt} (${goeTxt(g)}), score ${fmt(e.score)}.</span></li>`;
+  }).join("");
+  return `<div class="card" style="--c:var(--info)"><strong>Ce que signifie chaque élément</strong><ul style="margin:8px 0 0;padding-left:18px">${rows || "<li>Aucun élément.</li>"}</ul><div class="muted" style="margin-top:8px">Le GOE va de −5 à +5. Plus il est positif, plus le juge trouve l'exécution bonne. Le score de l'élément = base + GOE.</div></div>`;
+}
+
+function kindOf(code) {
+  const c = code.replace(/\s/g, "");
+  if (/\+/.test(c)) return "combo";
+  if (/^(\d)?(C?C?S?Sp|CoSp|CCoSp|FCoSp|FCCoSp|USp|UsSp|SSp|LSp|FUSp|FSSp|FLSp|FSp|FCSp|CCSp)/i.test(c)) return "spin";
+  if (/^[1-4](T|S|Lo|F|Lz|A)$/.test(c)) return "single";
+  return "other";
+}
+
+function readComps() {
+  const out = {};
+  $$("#compRows tr").forEach(tr => {
+    const key = tr.dataset.c;
+    const js = [...tr.querySelectorAll(".j")].map(i => parseFloat(i.value.replace(",", ".")));
+    const complete = js.every(v => !isNaN(v));
+    const mean = complete ? js.reduce((a, b) => a + b, 0) / 3 : NaN;
+    tr.querySelector(".pn").textContent = isNaN(mean) ? "–" : fmt(mean);
+    out[key] = { judges: js, mean, complete };
+  });
+  return out;
+}
+
+// ---------- Calcul ----------
+function recalc() {
+  const els = readElements();
+  const tes = round2(els.reduce((a, e) => a + (isNaN(e.score) ? 0 : e.score), 0));
+
+  const comps = readComps();
+  const compKeys = ["comp", "pres", "skate"];
+  const allComps = compKeys.every(k => comps[k] && comps[k].complete);
+  const panelTotal = allComps ? round2(compKeys.reduce((a, k) => a + comps[k].mean, 0)) : NaN;
+
+  // Totaux par juge
+  const perJudge = allComps ? [0, 1, 2].map(j => round2(compKeys.reduce((a, k) => a + comps[k].judges[j], 0))) : [];
+  const judgesOver = perJudge.filter(v => v >= TARGET.comp).length;
+  const majorityOk = allComps && judgesOver >= 2;
+
+  const list = els.map(e => {
+    const k = kindOf(e.code);
+    const posJ = e.judges.filter(j => j !== null && j >= 0).length;
+    const known = e.judges.filter(j => j !== null).length;
+    return { code: e.code || "?", kind: k, passes: known >= 2 && posJ >= 2, parts: e.code.replace(/\s/g, "").split("+").map(c => c.replace(/<+$|e$|!$|q$/, "")) };
+  });
+  const okList = list.filter(x => x.passes);
+  const reqResults = TARGET.reqs.map(r => ({ label: r.label, ok: r.test(okList) }));
+  const reqOk = reqResults.every(r => r.ok);
+  const tesOk = tes >= TARGET.tes;
+  const compOk = allComps && panelTotal >= TARGET.comp;
+  const passed = reqOk && tesOk && compOk && majorityOk;
+
+  const missTes = Math.max(0, round2(TARGET.tes - tes));
+  const missComp = allComps ? Math.max(0, round2(TARGET.comp - panelTotal)) : NaN;
+  const bestJudge = perJudge.length ? Math.max(...perJudge) : NaN;
+  const missMajority = perJudge.length ? round2(TARGET.comp - [...perJudge].sort((a, b) => b - a)[1]) : NaN;
+
+  $("#result").innerHTML = `
+    <div class="card" style="--c:${passed ? "var(--ok)" : "var(--fuchsia)"}">
+      <div class="verdict ${passed ? "ok" : "ko"}">${passed ? `Le test ${TARGET.name} est réussi sur cette feuille` : `Le test ${TARGET.name} n'est pas réussi sur cette feuille`}</div>
+      <div class="muted" style="margin-top:4px">Calcul selon le règlement. Ce n'est pas la décision officielle.</div>
+    </div>
+
+    ${renderExplain(els)}
+    <div class="card" style="--c:var(--info)">
+      <strong>Éléments</strong> <span class="muted">(TES ${fmt(tes)} · minimum ${fmt(TARGET.tes)})</span>
+      <div style="margin-top:6px">${tesOk ? `<span class="ok">✔ TES suffisant</span>` : `<span class="ko">✘ Il manque ${fmt(missTes)} point(s) de TES</span>`}</div>
+      <ul style="margin:8px 0 0;padding-left:18px">
+        ${reqResults.map(r => `<li class="${r.ok ? "ok" : "ko"}">${r.ok ? "✔" : "✘"} ${r.label}</li>`).join("")}
+      </ul>
+      <details><summary>Éléments reconnus</summary>
+        <ul style="margin:6px 0 0;padding-left:18px">
+          ${list.map(o => `<li>${o.code} : ${o.kind}${o.passes ? "" : " (GOE insuffisant ou non lu)"}</li>`).join("") || "<li>Aucun élément.</li>"}
+        </ul>
+      </details>
+    </div>
+
+    <div class="card" style="--c:var(--ok)">
+      <strong>Composantes</strong>
+      <div style="margin-top:6px">Total du panel : <span class="big">${fmt(panelTotal)}</span> / minimum ${fmt(TARGET.comp)}</div>
+      <div style="margin-top:6px">${!allComps ? `<span class="muted">Complète les trois juges de chaque composante.</span>` : compOk ? `<span class="ok">✔ Total suffisant</span>` : `<span class="ko">✘ Il manque ${fmt(missComp)} point(s)</span>`}</div>
+      ${allComps ? `<div style="margin-top:8px">Par juge : J1 ${fmt(perJudge[0])} · J2 ${fmt(perJudge[1])} · J3 ${fmt(perJudge[2])}</div>
+      <div style="margin-top:4px">${majorityOk ? `<span class="ok">✔ Majorité des juges au-dessus de ${fmt(TARGET.comp)}</span>` : `<span class="ko">✘ Seuls ${judgesOver} juge(s) sur 3 atteignent ${fmt(TARGET.comp)} (il en faut 2)</span>`}</div>` : ""}
+    </div>
+
+    <div class="card" style="--c:var(--warn)">
+      <strong>Ce qu'il faut pour réussir</strong>
+      <ul style="margin:6px 0 0;padding-left:18px">
+        ${!reqOk ? `<li>Il manque un élément exigé ou un GOE insuffisant.</li>` : ""}
+        ${!tesOk ? `<li>Le TES doit encore augmenter de ${fmt(missTes)}.</li>` : ""}
+        ${allComps && !compOk ? `<li>Le total des composantes doit encore augmenter de ${fmt(missComp)}.</li>` : ""}
+        ${allComps && compOk && !majorityOk ? `<li>Il faut que 2 juges sur 3 atteignent ${fmt(TARGET.comp)} : le second juge doit encore gagner ${fmt(Math.max(0, missMajority))}.</li>` : ""}
+        ${passed ? `<li>Tous les seuils sont atteints sur cette feuille.</li>` : ""}
+      </ul>
+    </div>`;
+}
+
+// ---------- Remplissage ----------
+function fillFromParse(p) {
+  $("#elRows").innerHTML = "";
+  p.elements.forEach(e => addElRow(e));
+  if (!p.elements.length) addElRow();
+  p.comps.forEach(c => {
+    const tr = document.querySelector(`#compRows tr[data-c="${c.key}"]`);
+    if (!tr) return;
+    const inputs = tr.querySelectorAll(".j");
+    c.judges.forEach((v, i) => inputs[i].value = v);
+  });
+  const doubts = p.elements.filter(e => e.doubt).length;
+  $("#readInfo").innerHTML = `${p.elements.length} éléments lus${doubts ? `, dont <span class="flag">${doubts} à vérifier</span>` : ""}. Compare avec la feuille avant de lire le résultat.`;
+  recalc();
+}
+
+$("#pasteBtn").onclick = () => {
+  const text = $("#paste").value;
+  if (!text.trim()) { $("#readInfo").textContent = "Colle d'abord le texte copié du site."; return; }
+  fillFromParse(parseSheet(text));
+};
+
+const catSel = $("#cat");
+catSel.innerHTML = TESTS.map((t, i) => `<option value="${i}">${t.label}</option>`).join("");
+function showTestInfo() {
+  $("#testInfo").textContent = `Test visé : ${TARGET.label}. TES minimum ${fmt(TARGET.tes)} ; composantes minimum ${fmt(TARGET.comp)} au total. Éléments exigés : ${TARGET.reqs.map(r => r.label).join(", ")}. Vérifie le programme de l'enfant : la durée change le seuil de TES.`;
+}
+catSel.addEventListener("change", () => { TARGET = TESTS[Number(catSel.value)]; showTestInfo(); recalc(); });
+showTestInfo();
+
+addElRow();
+recalc();
+</script>
+</body>
+</html>

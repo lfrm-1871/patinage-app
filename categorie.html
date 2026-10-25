@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#D81B60">
+<title>Catégorie par naissance</title>
+<style>
+  :root{
+    --fuchsia:#D81B60;
+    --reg:#2563EB;
+    --rom:#00897B;
+    --warn:#F59E0B;
+    --bg:#FFFFFF;
+    --text:#000000;
+    --card:#FFFFFF;
+    --border:#DDDDDD;
+  }
+  [data-theme="dark"]{
+    --bg:#121212;
+    --text:#FFFFFF;
+    --card:#1E1E1E;
+    --border:#333333;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  header{padding:18px 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:640px;margin:0 auto}
+  h1{color:var(--fuchsia);font-size:1.7rem;margin:0;line-height:1.1}
+  .sub{opacity:.75;font-size:.85rem;margin-top:4px}
+  #theme{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:999px;padding:8px 12px;font-size:.85rem;cursor:pointer;white-space:nowrap}
+  main{padding:0 16px 40px;max-width:640px;margin:0 auto}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-top:6px}
+  label{display:block;font-weight:700;margin:10px 0 6px}
+  label:first-child{margin-top:0}
+  input[type=date],select{width:100%;font-size:1rem;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text)}
+  .hint{font-size:.8rem;opacity:.75;margin-top:10px;line-height:1.45}
+  h2{font-size:1rem;margin:22px 0 6px}
+  .card{background:var(--card);border:1px solid var(--border);border-left:6px solid var(--c);border-radius:14px;padding:12px 14px;margin:10px 0}
+  .name{font-size:1.05rem;font-weight:700}
+  .tag{display:inline-block;font-size:.72rem;font-weight:700;color:var(--c);border:1px solid var(--c);border-radius:999px;padding:2px 8px;margin-left:6px;vertical-align:middle}
+  .row{font-size:.85rem;margin-top:6px;line-height:1.45}
+  .row b{font-weight:700}
+  .empty{opacity:.75;padding:18px 0;text-align:center;line-height:1.5}
+  .note{font-size:.75rem;opacity:.75;margin-top:24px;line-height:1.45}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.8rem;margin-top:10px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{width:10px;height:10px;border-radius:3px;background:var(--c);display:inline-block}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Catégorie par naissance</h1>
+    <div class="sub">Saison 2026-2027 · consultation uniquement</div>
+  </div>
+  <button id="theme" type="button">Mode sombre</button>
+</header>
+
+<main>
+  <div class="box">
+    <label for="dob">Date de naissance du patineur</label>
+    <input id="dob" type="date">
+
+    <label for="arp">Plus haut test ARP réussi</label>
+    <select id="arp">
+      <option value="0">Aucun</option>
+      <option value="7">7e ARP</option>
+      <option value="6">6e ARP</option>
+      <option value="5">5e ARP</option>
+      <option value="4">4e ARP (basic ou advanced)</option>
+      <option value="3">3e ARP</option>
+      <option value="2">2e ARP</option>
+      <option value="1">1re ARP</option>
+    </select>
+
+    <label for="sis">Plus haut test SIS réussi</label>
+    <select id="sis">
+      <option value="0">Aucun</option>
+      <option value="6">6e SIS (Inter-bronze)</option>
+      <option value="5">5e SIS (Bronze)</option>
+      <option value="4">4e SIS (Inter-argent)</option>
+      <option value="3">3e SIS (Argent)</option>
+      <option value="2">2e SIS (Inter-or)</option>
+    </select>
+
+    <div class="hint">Le calcul se fait dans votre navigateur. Rien n'est enregistré ni envoyé.</div>
+  </div>
+
+  <div class="legend">
+    <span style="--c:var(--reg)"><i></i>Catégorie régionale</span>
+    <span style="--c:var(--rom)"><i></i>Catégorie romande</span>
+  </div>
+
+  <div id="out"></div>
+
+  <p class="note">
+    Source : Règlements des catégories, saison 2026-2027 (version revue pour le 12 septembre), Association romande de patinage.
+    Seules les catégories des pages 4 à 8 sont incluses : Mixed Age, Junior et Senior ne le sont pas. Le classement suppose que le patineur passe dans la catégorie la plus haute qu'il peut atteindre à son âge. Pour les deux catégories qui s'appliquent au même âge (Acier et Poussin, par exemple), vérifiez le règlement.
+  </p>
+</main>
+
+<script>
+// min : né(e) à partir de cette date (incluse) ; max : né(e) jusqu'à cette date (incluse)
+// req : test minimum requis (arp ou sis, niveau numérique) ; ech : rang dans l'échelle de la filière (plus élevé = plus avancé)
+const CATS = [
+  {name:"Acier A",  kind:"reg", min:"2018-07-01", req:{}, ech:0, test:"Aucun ARP ni SIS", arp:"7e ARP"},
+  {name:"Acier B",  kind:"reg", max:"2018-06-30", req:{}, ech:0, test:"Aucun ARP ni SIS", arp:"7e ARP"},
+  {name:"Acier Adulte", kind:"reg", max:"2010-06-30", req:{}, ech:0, test:"Aucun ARP ni SIS", arp:"7e ARP"},
+  {name:"Cuivre A", kind:"reg", min:"2016-07-01", max:"2018-06-30", req:{arp:7}, ech:1, test:"7e ARP minimum", arp:"6e ARP"},
+  {name:"Cuivre B", kind:"reg", max:"2016-06-30", req:{arp:7}, ech:1, test:"7e ARP minimum", arp:"6e ARP"},
+  {name:"Cuivre Adulte", kind:"reg", max:"2010-06-30", req:{arp:7}, ech:1, test:"7e ARP minimum", arp:"6e ARP"},
+  {name:"Inter-bronze A", kind:"reg", min:"2012-07-01", max:"2016-06-30", req:{sis:6}, ech:2, test:"6e SIS minimum", arp:"5e ARP (rattrapage 6e ARP possible)"},
+  {name:"Inter-bronze B", kind:"reg", max:"2012-06-30", req:{sis:6}, ech:2, test:"6e SIS minimum", arp:"5e ARP (rattrapage 6e ARP possible)"},
+  {name:"Inter-bronze Adulte", kind:"reg", max:"2010-06-30", req:{arp:6}, ech:2, test:"6e ARP minimum (pas de 6e SIS requise)", arp:"5e ARP (rattrapage 6e ARP possible)"},
+  {name:"Bronze A", kind:"reg", min:"2010-07-01", max:"2012-06-30", req:{sis:5}, ech:3, test:"5e SIS minimum", arp:"4e ARP basic et/ou advanced"},
+  {name:"Bronze B", kind:"reg", max:"2010-06-30", req:{sis:5}, ech:3, test:"5e SIS minimum", arp:"4e ARP basic et/ou advanced"},
+  {name:"Inter-argent SIS", kind:"reg", max:"2010-06-30", req:{sis:4}, ech:4, test:"4e SIS basic ou advanced", arp:"4e ARP basic et/ou advanced"},
+  {name:"Argent 3'", kind:"reg", max:"2010-06-30", req:{sis:3}, ech:5, test:"3e SIS basic ou advanced", arp:"3e ARP"},
+  {name:"Argent 3'30", kind:"reg", max:"2010-06-30", req:{sis:3}, ech:5, test:"3e SIS basic ou advanced", arp:"3e ARP"},
+  {name:"Inter-Or", kind:"reg", max:"2010-06-30", req:{sis:2}, ech:6, test:"2e SIS basic ou advanced", arp:"3e ARP"},
+
+  {name:"Poussin ARP", kind:"rom", min:"2018-07-01", req:{arp:7}, ech:1, test:"7e ARP minimum", arp:"6e ARP"},
+  {name:"Benjamin ARP", kind:"rom", min:"2016-07-01", max:"2018-06-30", req:{arp:6}, ech:2, test:"6e ARP minimum (pas de 6e SIS requise)", arp:"5e ARP"},
+  {name:"Avenir ARP", kind:"rom", min:"2014-07-01", max:"2016-06-30", req:{arp:5}, ech:3, test:"5e ARP minimum", arp:"4e ARP basic et advanced"},
+  {name:"Minime ARP", kind:"rom", min:"2012-07-01", max:"2014-06-30", req:{arp:5}, ech:4, test:"5e ARP minimum", arp:"4e ARP basic et advanced"},
+  {name:"Inter-argent ARP", kind:"rom", max:"2012-06-30", req:{arp:4}, ech:5, test:"4e ARP basic ou advanced", arp:"4e ARP advanced"},
+  {name:"Novice ARP", kind:"rom", max:"2012-06-30", req:{arp:4}, ech:6, test:"4e ARP basic ou advanced (+ 4e SIS basic)", arp:"4e ARP advanced et 3e ARP"},
+  {name:"Argent ARP", kind:"rom", max:"2012-06-30", req:{arp:3}, ech:7, test:"3e ARP minimum", arp:"2e ARP"}
+];
+
+const $ = s => document.querySelector(s);
+
+function ageOk(c, iso){
+  if(c.min && iso < c.min) return false;
+  if(c.max && iso > c.max) return false;
+  return true;
+}
+
+// Progression : 7e ARP = 1 (premier test) ... 1re ARP = 7 ; 6e SIS = 1 ... 2e SIS = 5
+function arpProg(n){ return n ? 8 - n : 0; }
+function sisProg(n){ return n ? 7 - n : 0; }
+function testsOk(c, arp, sis){
+  if(c.req.arp && arpProg(arp) < arpProg(c.req.arp)) return false;
+  if(c.req.sis && sisProg(sis) < sisProg(c.req.sis)) return false;
+  return true;
+}
+
+function card(c){
+  const col = c.kind==="reg" ? "var(--reg)" : "var(--rom)";
+  const label = c.kind==="reg" ? "Régionale" : "Romande";
+  return `<article class="card" style="--c:${col}">
+    <div class="name">${c.name}<span class="tag">${label}</span></div>
+    <div class="row"><b>Test minimum :</b> ${c.test}</div>
+    <div class="row"><b>Test ARP obtenable :</b> ${c.arp}</div>
+  </article>`;
+}
+
+function render(){
+  const iso = $("#dob").value;
+  const arp = +$("#arp").value, sis = +$("#sis").value;
+  const out = $("#out");
+  if(!iso){ out.innerHTML = `<div class="empty">Saisissez une date de naissance pour voir la catégorie.</div>`; return; }
+
+  const byAge = CATS.filter(c => ageOk(c, iso));
+  if(!byAge.length){
+    out.innerHTML = `<div class="empty">Aucune catégorie de cette liste ne correspond à cette date. Vérifiez la date ou consultez le règlement.</div>`;
+    return;
+  }
+  const ok = byAge.filter(c => testsOk(c, arp, sis));
+  if(!ok.length){
+    out.innerHTML = `<div class="empty">Aucune catégorie compatible avec ces tests et cet âge. Vérifiez les tests indiqués ou le règlement.</div>`;
+    return;
+  }
+  const top = Math.max(...ok.map(c=>c.ech));
+  const best = ok.filter(c => c.ech === top);
+  const others = ok.filter(c => c.ech < top).sort((a,b)=>b.ech-a.ech);
+
+  let html = `<h2>Catégorie la plus probable</h2>` + best.map(card).join("");
+  if(others.length) html += `<h2>Autres catégories compatibles</h2>` + others.map(card).join("");
+  out.innerHTML = html;
+}
+
+function setTheme(t){
+  document.documentElement.setAttribute("data-theme", t);
+  document.body.setAttribute("data-theme", t);
+  $("#theme").textContent = t==="dark" ? "Mode clair" : "Mode sombre";
+}
+$("#theme").onclick = () => setTheme(document.body.getAttribute("data-theme")==="dark" ? "light" : "dark");
+["dob","arp","sis"].forEach(id => $("#"+id).addEventListener("input", render));
+["dob","arp","sis"].forEach(id => $("#"+id).addEventListener("change", render));
+setTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+render();
+</script>
+</body>
+</html>

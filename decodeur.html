@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#D81B60">
+<title>Recherche d'éléments</title>
+<style>
+  :root{
+    --fuchsia:#D81B60;
+    --jump:#2563EB;
+    --spin:#00897B;
+    --step:#F59E0B;
+    --bg:#FFFFFF;
+    --text:#000000;
+    --card:#FFFFFF;
+    --border:#DDDDDD;
+  }
+  [data-theme="dark"]{
+    --bg:#121212;
+    --text:#FFFFFF;
+    --card:#1E1E1E;
+    --border:#333333;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  header{padding:18px 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:640px;margin:0 auto}
+  h1{color:var(--fuchsia);font-size:1.7rem;margin:0;line-height:1.1}
+  .sub{opacity:.75;font-size:.85rem;margin-top:4px}
+  #theme{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:999px;padding:8px 12px;font-size:.85rem;cursor:pointer;white-space:nowrap}
+  main{padding:0 16px 40px;max-width:640px;margin:0 auto}
+  input[type=search]{width:100%;font-size:1.05rem;padding:12px 14px;border-radius:12px;border:2px solid var(--fuchsia);background:var(--card);color:var(--text);margin-top:8px}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.8rem;margin:12px 0 0}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{width:10px;height:10px;border-radius:3px;background:var(--c);display:inline-block}
+  .count{font-size:.8rem;opacity:.75;margin-top:12px}
+  .card{background:var(--card);border:1px solid var(--border);border-left:6px solid var(--c);border-radius:12px;padding:11px 14px;margin:8px 0}
+  .top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .code{font-size:1.1rem;font-weight:800;white-space:nowrap}
+  .base{font-size:.8rem;opacity:.85;white-space:nowrap}
+  .base b{font-size:1.02rem;opacity:1}
+  .fr{font-size:.92rem;font-weight:600;margin-top:4px}
+  .desc{font-size:.82rem;opacity:.8;margin-top:4px;line-height:1.4}
+  .tag{font-size:.7rem;font-weight:700;color:var(--c);border:1px solid var(--c);border-radius:999px;padding:2px 8px;margin-left:6px;vertical-align:middle}
+  .empty{opacity:.75;padding:18px 0;text-align:center;line-height:1.5}
+  .note{font-size:.75rem;opacity:.75;margin-top:24px;line-height:1.45}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Recherche d'éléments</h1>
+    <div class="sub">Sauts, pirouettes, pas et suffixes · saison 2026-2027</div>
+  </div>
+  <button id="theme" type="button">Mode sombre</button>
+</header>
+
+<main>
+  <input type="search" id="q" placeholder="Ex. 3Lz, boucle, USp, StSq, <, combinée…" autocomplete="off">
+  <div class="legend">
+    <span style="--c:var(--jump)"><i></i>Sauts</span>
+    <span style="--c:var(--spin)"><i></i>Pirouettes</span>
+    <span style="--c:var(--step)"><i></i>Pas et suffixes</span>
+  </div>
+  <div class="count" id="count"></div>
+  <div id="list"></div>
+
+  <p class="note">
+    Valeurs de base : Communication ISU 2786 (au 1er juillet 2026). Règles des suffixes : ISU 2788. Règles de chorégraphie : règlement ARP 2026-2027.
+    Les valeurs de base sont avant GOE. Les pas (ChSq) des catégories ARP ne sont pas encore chiffrés.
+  </p>
+</main>
+
+<script>
+// kind : "jump" | "spin" | "step" | "suffix" | "rule"
+// alias : mots que l'on peut taper pour trouver l'élément
+const ITEMS = [
+  // Sauts simples
+  {kind:"jump", code:"1T", fr:"Boucle piquée (toe loop)", base:0.40, alias:"toe loop piqué", desc:"Saut simple, appui sur la pointe du patin libre."},
+  {kind:"jump", code:"1S", fr:"Salchow", base:0.40, alias:"salchow", desc:"Saut simple, appui sur l'arrière intérieur."},
+  {kind:"jump", code:"1Lo", fr:"Boucle (Rittberger)", base:0.50, alias:"boucle loop rittberger", desc:"Saut simple, appui sur l'arrière extérieur."},
+  {kind:"jump", code:"1F", fr:"Flip", base:0.50, alias:"flip", desc:"Saut simple, appui sur la pointe, arrière intérieur vers extérieur."},
+  {kind:"jump", code:"1Lz", fr:"Lutz", base:0.60, alias:"lutz", desc:"Saut simple avec appui sur la pointe, en arrière extérieur, avec élan de l'autre pied."},
+  {kind:"jump", code:"1A", fr:"Axel", base:1.10, alias:"axel", desc:"Seul saut en avant : un demi-tour de plus."},
+  // Sauts doubles
+  {kind:"jump", code:"2T", fr:"Boucle piquée double", base:1.30, alias:"toe loop double", desc:"Deux tours."},
+  {kind:"jump", code:"2S", fr:"Salchow double", base:1.30, alias:"salchow double", desc:"Deux tours."},
+  {kind:"jump", code:"2Lo", fr:"Boucle double", base:1.70, alias:"boucle double rittberger", desc:"Deux tours."},
+  {kind:"jump", code:"2F", fr:"Flip double", base:1.80, alias:"flip double", desc:"Deux tours."},
+  {kind:"jump", code:"2Lz", fr:"Lutz double", base:2.10, alias:"lutz double", desc:"Deux tours."},
+  {kind:"jump", code:"2A", fr:"Axel double", base:3.30, alias:"axel double", desc:"Deux tours et demi, en avant."},
+  // Sauts triples
+  {kind:"jump", code:"3T", fr:"Boucle piquée triple", base:4.20, alias:"toe loop triple", desc:"Trois tours."},
+  {kind:"jump", code:"3S", fr:"Salchow triple", base:4.30, alias:"salchow triple", desc:"Trois tours."},
+  {kind:"jump", code:"3Lo", fr:"Boucle triple", base:4.90, alias:"boucle triple rittberger", desc:"Trois tours."},
+  {kind:"jump", code:"3F", fr:"Flip triple", base:5.30, alias:"flip triple", desc:"Trois tours."},
+  {kind:"jump", code:"3Lz", fr:"Lutz triple", base:5.90, alias:"lutz triple", desc:"Trois tours."},
+  {kind:"jump", code:"3A", fr:"Axel triple", base:8.00, alias:"axel triple", desc:"Trois tours et demi, en avant."},
+
+  // Pirouettes sur place
+  {kind:"spin", code:"USpB", fr:"Pirouette debout, niveau B", base:1.20, alias:"upright debout spin", desc:"Pirouette debout sur un pied, position de base."},
+  {kind:"spin", code:"USp1", fr:"Pirouette debout, niveau 1", base:1.40, alias:"upright debout spin", desc:"Pirouette debout avec une variation."},
+  {kind:"spin", code:"USp2", fr:"Pirouette debout, niveau 2", base:1.80, alias:"upright debout spin", desc:"Pirouette debout avec variations."},
+  {kind:"spin", code:"USp3", fr:"Pirouette debout, niveau 3", base:2.30, alias:"upright debout spin", desc:"Pirouette debout, variations avancées."},
+  {kind:"spin", code:"USp4", fr:"Pirouette debout, niveau 4", base:2.90, alias:"upright debout spin", desc:"Pirouette debout, niveau le plus élevé."},
+  {kind:"spin", code:"SSpB", fr:"Pirouette assise, niveau B", base:1.30, alias:"sit assise spin", desc:"Pirouette assise sur la glace."},
+  {kind:"spin", code:"SSp1", fr:"Pirouette assise, niveau 1", base:1.60, alias:"sit assise spin", desc:"Pirouette assise avec une variation."},
+  {kind:"spin", code:"SSp2", fr:"Pirouette assise, niveau 2", base:1.90, alias:"sit assise spin", desc:"Pirouette assise avec variations."},
+  {kind:"spin", code:"SSp3", fr:"Pirouette assise, niveau 3", base:2.50, alias:"sit assise spin", desc:"Pirouette assise, variations avancées."},
+  {kind:"spin", code:"SSp4", fr:"Pirouette assise, niveau 4", base:3.00, alias:"sit assise spin", desc:"Pirouette assise, niveau le plus élevé."},
+  {kind:"spin", code:"CSpB", fr:"Pirouette chameau, niveau B", base:1.30, alias:"camel chameau spin", desc:"Pirouette en position chameau."},
+  {kind:"spin", code:"CSp1", fr:"Pirouette chameau, niveau 1", base:1.70, alias:"camel chameau spin", desc:"Pirouette chameau avec une variation."},
+  {kind:"spin", code:"CSp2", fr:"Pirouette chameau, niveau 2", base:2.20, alias:"camel chameau spin", desc:"Pirouette chameau avec variations."},
+  {kind:"spin", code:"CSp3", fr:"Pirouette chameau, niveau 3", base:2.80, alias:"camel chameau spin", desc:"Pirouette chameau, variations avancées."},
+  {kind:"spin", code:"CSp4", fr:"Pirouette chameau, niveau 4", base:3.10, alias:"camel chameau spin", desc:"Pirouette chameau, niveau le plus élevé."},
+  // Pirouettes avec changement de pied
+  {kind:"spin", code:"CUSpB", fr:"Pirouette debout avec changement de pied, niveau B", base:1.80, alias:"changement pied change of foot", desc:"Changement de pied pendant la pirouette debout."},
+  {kind:"spin", code:"CUSp1", fr:"Pirouette debout avec changement de pied, niveau 1", base:2.00, alias:"changement pied change of foot", desc:"Changement de pied, avec une variation."},
+  {kind:"spin", code:"CUSp2", fr:"Pirouette debout avec changement de pied, niveau 2", base:2.40, alias:"changement pied change of foot", desc:"Changement de pied, avec variations."},
+  {kind:"spin", code:"CUSp3", fr:"Pirouette debout avec changement de pied, niveau 3", base:2.90, alias:"changement pied change of foot", desc:"Changement de pied, variations avancées."},
+  {kind:"spin", code:"CUSp4", fr:"Pirouette debout avec changement de pied, niveau 4", base:3.50, alias:"changement pied change of foot", desc:"Changement de pied, niveau le plus élevé."},
+  // Pirouettes sautées
+  {kind:"spin", code:"FUSpB", fr:"Pirouette sautée debout, niveau B", base:1.80, alias:"flying sautée entrée", desc:"Pirouette qui commence par un saut."},
+  {kind:"spin", code:"FUSp1", fr:"Pirouette sautée debout, niveau 1", base:2.00, alias:"flying sautée entrée", desc:"Pirouette sautée avec une variation."},
+  {kind:"spin", code:"FUSp2", fr:"Pirouette sautée debout, niveau 2", base:2.40, alias:"flying sautée entrée", desc:"Pirouette sautée avec variations."},
+  {kind:"spin", code:"FUSp3", fr:"Pirouette sautée debout, niveau 3", base:2.90, alias:"flying sautée entrée", desc:"Pirouette sautée, variations avancées."},
+  {kind:"spin", code:"FUSp4", fr:"Pirouette sautée debout, niveau 4", base:3.50, alias:"flying sautée entrée", desc:"Pirouette sautée, niveau le plus élevé."},
+
+  // Pirouettes combinées sans changement de pied
+  {kind:"spin", code:"CoSpB", fr:"Pirouette combinée, niveau B", base:1.80, alias:"combinée combo spin combinaison", desc:"Au moins 2 positions de base, sans changement de pied."},
+  {kind:"spin", code:"CoSp1", fr:"Pirouette combinée, niveau 1", base:2.00, alias:"combinée combo spin combinaison", desc:"Pirouette combinée, niveau 1."},
+  {kind:"spin", code:"CoSp2", fr:"Pirouette combinée, niveau 2", base:2.40, alias:"combinée combo spin combinaison", desc:"Pirouette combinée, niveau 2."},
+  {kind:"spin", code:"CoSp3", fr:"Pirouette combinée, niveau 3", base:3.00, alias:"combinée combo spin combinaison", desc:"Pirouette combinée, niveau 3."},
+  {kind:"spin", code:"CoSp4", fr:"Pirouette combinée, niveau 4", base:3.60, alias:"combinée combo spin combinaison", desc:"Pirouette combinée, niveau le plus élevé."},
+  // Pirouettes combinées avec changement de pied
+  {kind:"spin", code:"CCoSpB", fr:"Pirouette combinée avec changement de pied, niveau B", base:2.00, alias:"combinée changement pied change of foot", desc:"Changement de pied dans une pirouette combinée."},
+  {kind:"spin", code:"CCoSp1", fr:"Pirouette combinée avec changement de pied, niveau 1", base:2.40, alias:"combinée changement pied change of foot", desc:"Niveau 1."},
+  {kind:"spin", code:"CCoSp2", fr:"Pirouette combinée avec changement de pied, niveau 2", base:3.00, alias:"combinée changement pied change of foot", desc:"Niveau 2."},
+  {kind:"spin", code:"CCoSp3", fr:"Pirouette combinée avec changement de pied, niveau 3", base:3.60, alias:"combinée changement pied change of foot", desc:"Niveau 3."},
+  {kind:"spin", code:"CCoSp4", fr:"Pirouette combinée avec changement de pied, niveau 4", base:4.20, alias:"combinée changement pied change of foot", desc:"Niveau le plus élevé."},
+
+  // Pas (séquences de pas)
+  {kind:"step", code:"StSqB", fr:"Séquence de pas, niveau basic", base:1.60, alias:"pas step sequence stsq", desc:"Au moins 2 virages difficiles et des pas sur arêtes propres."},
+  {kind:"step", code:"StSq1", fr:"Séquence de pas, niveau 1", base:1.90, alias:"pas step sequence stsq", desc:"1 critère de niveau rempli."},
+  {kind:"step", code:"StSq2", fr:"Séquence de pas, niveau 2", base:2.70, alias:"pas step sequence stsq", desc:"2 critères de niveau remplis."},
+  {kind:"step", code:"StSq3", fr:"Séquence de pas, niveau 3", base:3.50, alias:"pas step sequence stsq", desc:"3 critères de niveau remplis."},
+  {kind:"step", code:"StSq4", fr:"Séquence de pas, niveau 4", base:4.10, alias:"pas step sequence stsq", desc:"Les 4 critères de niveau remplis."},
+
+  // Suffixes
+  {kind:"suffix", code:"<", fr:"Sous-rotation", effect:"80 % de la valeur", alias:"sous rotation under", desc:"Il manque plus d'un quart de tour, mais moins d'un demi-tour. Exemple : 1T< = 0,32."},
+  {kind:"suffix", code:"<<", fr:"Downgrade", effect:"Un tour de moins", alias:"downgrade", desc:"Il manque un demi-tour ou plus : compté comme le saut à un tour de moins. Exemple : 2Lo<< = 0,50."},
+  {kind:"suffix", code:"q", fr:"Réception sur le quart", effect:"Valeur pleine", alias:"quart quarter", desc:"Le saut garde sa valeur, mais les juges baissent le GOE. Exemple : 1Tq = 0,40."},
+  {kind:"suffix", code:"e", fr:"Mauvaise arête de départ (F ou Lz)", effect:"Valeur réduite", alias:"arête edge", desc:"Exemples : 1Fe = 0,40 ; 1Lze = 0,48."},
+  {kind:"suffix", code:"!", fr:"Arête contestée (F ou Lz)", effect:"Valeur pleine", alias:"arête edge", desc:"Le saut garde sa valeur d'origine. Exemple : 1Lz! = 0,60."},
+  {kind:"suffix", code:"Eu", fr:"Demi-boucle (Euler)", effect:"Zéro point", alias:"euler demi boucle", desc:"Pas de valeur, et pas comptée dans le nombre de sauts d'une combinaison ou séquence."},
+  {kind:"suffix", code:"V", fr:"Condition non remplie (pirouette)", effect:"Valeur réduite", alias:"variante", desc:"Exemple : CoSp1V = 1,50 au lieu de 2,00. Certaines pirouettes V sont « No Value » en programme court."},
+
+  // Éléments chorégraphiques ISU (valeur fixe, jugés uniquement en GOE)
+  {kind:"step", code:"ChSq1", fr:"Séquence chorégraphique (ISU)", base:3.50, alias:"chorégraphique choreo sequence chsq", desc:"Au moins 2 mouvements différents (spirales, arabesques, écarts...), reliés par des pas ou virages. Jugée uniquement en GOE."},
+  {kind:"spin", code:"ChSp1", fr:"Pirouette chorégraphique (ISU)", base:3.50, alias:"chorégraphique choreo spin chsp", desc:"Au moins 3 tours consécutifs sur un ou deux patins. Jugée uniquement en GOE."},
+  {kind:"rule", code:"ChSqA", fr:"Séquence chorégraphique, niveau A (ARP)", alias:"chsqa chorégraphie niveau a acier cuivre poussin", desc:"Niveau A du règlement ARP : Acier (2 mouvements reliés par des trois avant) ; Cuivre et Poussin (2 mouvements, 1 changement de carre avant et 1 mohawk). Valeur ARP à confirmer."},
+  {kind:"rule", code:"ChSqB", fr:"Séquence chorégraphique, niveau B (ARP)", alias:"chsqb chorégraphie niveau b inter-bronze benjamin", desc:"Niveau B du règlement ARP : au moins 2 mouvements, 2 trois arrière et 2 changements de carre arrière. Valeur ARP à confirmer."},
+
+  // Règles chorégraphiques ARP
+  {kind:"rule", code:"ChSq Acier", fr:"Chorégraphie : 2 mouvements, trois avant", alias:"chorégraphie chsq acier", desc:"Au moins 2 mouvements reliés par des trois avant (pied droit et gauche). Sinon NV."},
+  {kind:"rule", code:"ChSq Cuivre", fr:"Chorégraphie : 2 mouvements, carre et mohawk", alias:"chorégraphie chsq cuivre poussin", desc:"Au moins 2 mouvements, 1 changement de carre avant et 1 mohawk. Sinon NV."},
+  {kind:"rule", code:"ChSq Inter-bronze", fr:"Chorégraphie : 2 mouvements, trois arrière", alias:"chorégraphie chsq inter-bronze benjamin", desc:"Au moins 2 mouvements, 2 trois arrière et 2 changements de carre arrière. Sinon NV."}
+];
+
+const KIND = {
+  jump:{label:"Saut", color:"var(--jump)"},
+  spin:{label:"Pirouette", color:"var(--spin)"},
+  step:{label:"Pas", color:"var(--step)"},
+  suffix:{label:"Suffixe", color:"var(--step)"},
+  rule:{label:"Règle", color:"var(--step)"}
+};
+
+const $ = s => document.querySelector(s);
+const norm = s => (s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function render(){
+  const raw = $("#q").value.trim();
+  const terms = norm(raw).split(/\s+/).filter(Boolean);
+  const items = ITEMS.filter(i => {
+    if(!terms.length) return true;
+    const hay = norm([i.code, i.fr, i.alias, i.desc].join(" "));
+    return terms.every(t => hay.includes(t));
+  });
+  $("#count").textContent = terms.length ? `${items.length} résultat(s)` : `${ITEMS.length} éléments. Tapez un code, un nom ou un mot.`;
+  if(!items.length){
+    $("#list").innerHTML = `<div class="empty">Aucun élément ne correspond. Essayez un autre mot, comme « boucle », « lutz » ou « pirouette ».</div>`;
+    return;
+  }
+  $("#list").innerHTML = items.map(i => {
+    const k = KIND[i.kind];
+    const baseTxt = (i.base !== undefined) ? `<div class="base">Base <b>${i.base.toFixed(2).replace(".",",")}</b></div>`
+                    : (i.effect ? `<div class="base"><b>${esc(i.effect)}</b></div>` : "");
+    return `<article class="card" style="--c:${k.color}">
+      <div class="top">
+        <div><span class="code">${esc(i.code)}</span><span class="tag">${k.label}</span></div>
+        ${baseTxt}
+      </div>
+      <div class="fr">${esc(i.fr)}</div>
+      <div class="desc">${esc(i.desc)}</div>
+    </article>`;
+  }).join("");
+}
+
+function setTheme(t){
+  document.documentElement.setAttribute("data-theme", t);
+  document.body.setAttribute("data-theme", t);
+  $("#theme").textContent = t==="dark" ? "Mode clair" : "Mode sombre";
+}
+$("#theme").onclick = () => setTheme(document.body.getAttribute("data-theme")==="dark" ? "light" : "dark");
+$("#q").addEventListener("input", render);
+setTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+render();
+</script>
+</body>
+</html>
